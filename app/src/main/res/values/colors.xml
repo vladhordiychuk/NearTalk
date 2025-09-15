@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors-->
+    <color name="primary">#2962FF</color>
+    <color name="primary_dark">#0039CB</color>
+    <color name="accent">#FF6D00</color>
+
+    <!-- Text colors -->
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#757575</color>
+
+    <!-- Backgrounds -->
+    <color name="background">#000000</color>
+    <color name="input_background">#EEEEEE</color>
+
+    <!-- Message bubbles -->
+    <color name="sent_message_background">#2962FF</color>
+    <color name="received_message_background">#E0E0E0</color>
+
+    <!-- Status indicators -->
+    <color name="success">#00C853</color>
+    <color name="error">#DD2C00</color>
+    <color name="warning">#FFAB00</color>
+    <color name="info">#2962FF</color>
+
+    <!-- Neutral -->
+    <color name="white">#FFFFFF</color>
+    <color name="icon_background">#1A000000</color>
+</resources>
