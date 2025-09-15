@@ -1,4 +1,4 @@
-# 📱 NearTalk – Offline Messenger
+# NearTalk – Offline Messenger
 
 NearTalk is a messenger application written in **Kotlin (Android)** with an experimental backend on **Spring Boot**.  
 The main goal is to provide **peer-to-peer communication without the Internet** using **Bluetooth** technology.  
@@ -33,6 +33,3 @@ At the current stage, only a basic **UI prototype** is implemented.
 ---
 
 ## 📦 How to Run
-
-### 1. Android App
-
