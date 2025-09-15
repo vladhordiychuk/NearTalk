@@ -32,4 +32,8 @@ At the current stage, only a basic **UI prototype** is implemented.
 
 ---
 
+## Screenshots
+
+---
+
 ## 📦 How to Run
