@@ -23,6 +23,7 @@ import com.neartalk.viewmodel.HomeViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.draw.rotate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,49 +209,54 @@ fun ChatRow(chat: Chat, onClick: () -> Unit) {
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.Center
         ) {
-            if (chat.isPinned && chat.isSentByMe) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (chat.isRead) {
-                        Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(12.dp))
-                        Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(12.dp))
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = "Sent", tint = SecondaryText, modifier = Modifier.size(12.dp))
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(chat.time * 1000))
-                    Text(formattedTime, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
-                }
-            } else {
-                val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(chat.time * 1000))
-                Text(formattedTime, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
-                Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    .format(Date(chat.time * 1000))
 
                 if (chat.isSentByMe) {
-                    Box(modifier = Modifier.width(16.dp)) {
-                        if (chat.isRead) {
-                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(12.dp))
-                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(12.dp))
-                        } else {
-                            Icon(Icons.Default.Check, contentDescription = "Sent", tint = SecondaryText, modifier = Modifier.size(12.dp))
+                    if (chat.isRead) {
+                        Box {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Read",
+                                tint = Primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Read",
+                                tint = Primary,
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .offset(x = 4.dp)
+                            )
                         }
-                    }
-                } else if (chat.unreadCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 20.dp)
-                            .height(20.dp)
-                            .clip(CircleShape)
-                            .background(Primary)
-                            .padding(horizontal = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if(chat.unreadCount > 99) "99+" else chat.unreadCount.toString(),
-                            color = OnPrimary,
-                            style = MaterialTheme.typography.labelSmall
+                    } else {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Sent",
+                            tint = SecondaryText,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
+
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Text(formattedTime, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+            }
+
+            if (chat.isPinned) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.PushPin,
+                    contentDescription = "Pinned",
+                    tint = Primary,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .rotate(45f)
+                )
             }
         }
     }

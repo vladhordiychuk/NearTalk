@@ -2,8 +2,8 @@ package com.neartalk.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Primary = Color(0xFF1A73E8)
-val PrimaryDark = Color(0xFF82B1FF)
+val Primary = Color(0xFF7C4DFF)
+val PrimaryDark = Color(0xFF651FFF)
 
 val Secondary = Color(0xFF03DAC6)
 val SecondaryDark = Color(0xFF00BFA5)
@@ -29,8 +29,8 @@ val SecondaryText = Color(0xFF5F6368)
 val PrimaryTextDark = Color(0xFFECEFF1)
 val SecondaryTextDark = Color(0xFF9E9E9E)
 
-val Accent = Color(0xFF03DAC6)
-val AccentDark = Color(0xFF00BFA5)  
+val Accent = Primary
+val AccentDark = PrimaryDark
 
 val Online = Color(0xFF34C759)
 val Offline = Color(0xFF9E9E9E)
