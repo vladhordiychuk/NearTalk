@@ -17,6 +17,7 @@ import com.neartalk.ui.screens.ProfileScreen
 import com.neartalk.ui.screens.FilesScreen
 import com.neartalk.ui.screens.ContactsScreen
 import com.neartalk.viewmodel.HomeViewModel
+import com.neartalk.ui.screens.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +67,16 @@ fun AppNavigation(navController: NavHostController) {
             viewModel.selectedTab.value = 0 // Contacts
             ContactsScreen(
                 onBack = { navController.popBackStack() },
+                onNavigateToHome = { navController.navigate("home") },
+                onNavigateToSettings = { navController.navigate("settings") },
+                viewModel = viewModel
+            )
+        }
+        composable("settings") {
+            viewModel.selectedTab.value = 2
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToContacts = { navController.navigate("contacts") },
                 onNavigateToHome = { navController.navigate("home") },
                 viewModel = viewModel
             )

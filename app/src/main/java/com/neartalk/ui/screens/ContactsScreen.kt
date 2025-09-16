@@ -14,6 +14,7 @@ import com.neartalk.viewmodel.HomeViewModel
 fun ContactsScreen(
     onBack: () -> Unit,
     onNavigateToHome: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val chats by viewModel.chats
@@ -92,6 +93,7 @@ fun ContactsScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { viewModel.selectedTab.value = 2
+                                onNavigateToSettings()
                     },
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
                     label = { Text("Settings") },
