@@ -15,6 +15,8 @@ import com.neartalk.ui.screens.HomeScreen
 import com.neartalk.ui.screens.LoginScreen
 import com.neartalk.ui.screens.ProfileScreen
 import com.neartalk.ui.screens.FilesScreen
+import com.neartalk.ui.screens.ContactsScreen
+import com.neartalk.viewmodel.HomeViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,11 +33,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
+    val viewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
+            viewModel.selectedTab.value = 1 // Chats
             HomeScreen(
                 onNavigateToChat = { navController.navigate("chat") },
                 onNavigateToProfile = { navController.navigate("profile") },
+                onNavigateToContacts = { navController.navigate("contacts") },
+                onNavigateToSettings = { navController.navigate("settings") },
+                viewModel = viewModel
             )
         }
         composable("chat") {
@@ -46,20 +54,21 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
         composable("profile") {
-            ProfileScreen(
-                onBack = { navController.popBackStack() }
-            )
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
         composable("login") {
-            LoginScreen(
-                onBack = { navController.popBackStack() }
-            )
+            LoginScreen(onBack = { navController.popBackStack() })
         }
         composable("files") {
-            FilesScreen(
-                onBack = { navController.popBackStack()}
+            FilesScreen(onBack = { navController.popBackStack() })
+        }
+        composable("contacts") {
+            viewModel.selectedTab.value = 0 // Contacts
+            ContactsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToHome = { navController.navigate("home") },
+                viewModel = viewModel
             )
         }
     }
 }
-
