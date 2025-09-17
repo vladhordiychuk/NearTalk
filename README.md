@@ -14,7 +14,7 @@ At the current stage, only a basic **UI prototype** is implemented.
 - [ ] Group chats over Bluetooth mesh
 - [ ] Online sync when the Internet is available
 - [ ] Push notifications
-- [ ] Dark/Light themes
+- [x] Dark/Light themes
 
 ---
 
