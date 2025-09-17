@@ -2,8 +2,7 @@ package com.neartalk.viewmodel
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.neartalk.models.Chat
-import com.neartalk.models.ChatType
+import com.neartalk.domain.model.Chat
 
 class HomeViewModel : ViewModel() {
 

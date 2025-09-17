@@ -1,7 +1,6 @@
 package com.neartalk.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -18,28 +17,38 @@ import androidx.compose.material.icons.filled.Send
 import com.neartalk.ui.theme.Online
 import com.neartalk.ui.theme.Surface
 import com.neartalk.ui.components.NearTalkTextField
-import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.Mic
-import com.neartalk.models.Message
 import com.neartalk.viewmodel.ChatViewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.neartalk.ui.theme.SecondaryText
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.rememberLazyListState
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.neartalk.domain.model.Message
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
+    userId: String,
+    receiverId: String,
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToFiles: () -> Unit,
-    viewModel: ChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    userName: String = "Dima",
+    isOnline: Boolean = true,
+    viewModel: ChatViewModel = hiltViewModel()
 ) {
-    val messages = viewModel.messages.value
-    val inputText = viewModel.inputText.value
+    LaunchedEffect(userId) {
+        viewModel.loadMessages(userId)
+    }
+
+    val messages by viewModel.messages.collectAsState()
+    val inputText by viewModel.inputText.collectAsState()
 
     Scaffold(
         topBar = {
@@ -47,13 +56,13 @@ fun ChatScreen(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Dima",
+                            text = userName,
                             color = PrimaryText,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "online",
-                            color = Online,
+                            text = if (isOnline) "online" else "offline",
+                            color = if (isOnline) Online else SecondaryText,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -62,7 +71,7 @@ fun ChatScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
-                            contentDescription = "Arrow back",
+                            contentDescription = "Back",
                             tint = Primary
                         )
                     }
@@ -71,7 +80,7 @@ fun ChatScreen(
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "User",
+                            contentDescription = "Profile",
                             tint = Primary
                         )
                     }
@@ -89,15 +98,12 @@ fun ChatScreen(
                 color = Surface,
                 shadowElevation = 4.dp
             ) {
-                Column {
-                    ChatInputBar(
-                        text = inputText,
-                        onTextChange = viewModel::onInputChanged,
-                        onNavigateToFiles = onNavigateToFiles,
-                        onSent = { viewModel.onMessageSent() }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                ChatInputBar(
+                    text = inputText,
+                    onTextChange = viewModel::onInputChanged,
+                    onNavigateToFiles = onNavigateToFiles,
+                    onSent = { viewModel.onMessageSent(userId, receiverId) }
+                )
             }
         }
     ) { innerPadding ->
@@ -107,7 +113,11 @@ fun ChatScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            ChatMessages(messages = messages, modifier = Modifier.weight(1f))
+            ChatMessages(
+                messages = messages,
+                userId = userId, // Pass userId to ChatMessages
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -121,11 +131,13 @@ fun ChatInputBar(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onNavigateToFiles) {
-            Icon(Icons.Default.AttachFile, contentDescription = "Attach", tint = Primary)
+            Icon(Icons.Default.AttachFile, contentDescription = "Attach file", tint = Primary)
         }
         NearTalkTextField(
             value = text,
@@ -137,54 +149,67 @@ fun ChatInputBar(
         )
         if (text.isNotBlank()) {
             IconButton(onClick = onSent) {
-                Icon(Icons.Default.Send, contentDescription = "Send", tint = Primary)
+                Icon(Icons.Default.Send, contentDescription = "Send message", tint = Primary)
             }
         } else {
-            IconButton(onClick = { /* TODO: Voice/Video */ }) {
-                Icon(Icons.Default.Mic, contentDescription = "Record", tint = Primary)
+            IconButton(onClick = { /* TODO: Implement voice recording */ }) {
+                Icon(Icons.Default.Mic, contentDescription = "Record voice", tint = Primary)
             }
         }
     }
 }
 
 @Composable
-fun ChatMessages(messages: List<Message>, modifier: Modifier = Modifier) {
+fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages) {
         if (messages.isNotEmpty()) {
-            listState.scrollToItem(0)
+            coroutineScope.launch {
+                listState.animateScrollToItem(0)
+            }
         }
     }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        reverseLayout = true
+        reverseLayout = true,
+        contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(messages) { message ->
-            MessageBubble(message)
+        items(messages, key = { it.id }) { message ->
+            MessageBubble(message = message, userId = userId)
         }
     }
 }
 
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(message: Message, userId: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(4.dp),
-        horizontalArrangement = if (message.isSentByMe) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (message.senderId == userId) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            color = if (message.isSentByMe) Primary else Surface,
+            color = if (message.senderId == userId) Primary else Surface,
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text(
-                text = message.text,
-                modifier = Modifier.padding(12.dp),
-                color = if (message.isSentByMe) SecondaryText else PrimaryText
-            )
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = message.text,
+                    color = if (message.senderId == userId) SecondaryText else PrimaryText
+                )
+                Text(
+                    text = message.formattedTimestamp(),
+                    color = SecondaryText,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 }

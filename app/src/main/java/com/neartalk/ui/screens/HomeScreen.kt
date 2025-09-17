@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.neartalk.models.Chat
+import com.neartalk.domain.model.Chat
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.style.TextOverflow
@@ -195,13 +195,8 @@ fun ChatRow(chat: Chat, onClick: () -> Unit) {
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(chat.name, style = MaterialTheme.typography.bodyLarge, color = PrimaryText)
-            }
-
+        Column(modifier = Modifier.weight(1f)) {
+            Text(chat.name, style = MaterialTheme.typography.bodyLarge, color = PrimaryText)
             Text(
                 chat.lastMessage,
                 style = MaterialTheme.typography.bodyMedium,
@@ -213,7 +208,7 @@ fun ChatRow(chat: Chat, onClick: () -> Unit) {
 
         Column(
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -222,46 +217,40 @@ fun ChatRow(chat: Chat, onClick: () -> Unit) {
                 if (chat.isSentByMe) {
                     if (chat.isRead) {
                         Box {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Read",
-                                tint = Primary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Read",
-                                tint = Primary,
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .offset(x = 4.dp)
-                            )
+                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(14.dp).offset(x = 4.dp))
                         }
                     } else {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "Sent",
-                            tint = SecondaryText,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        Icon(Icons.Default.Check, contentDescription = "Sent", tint = SecondaryText, modifier = Modifier.size(14.dp))
                     }
                 }
 
-
                 Spacer(modifier = Modifier.width(4.dp))
-
                 Text(formattedTime, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
             }
 
+            if (chat.unreadCount > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .background(Primary, shape = CircleShape)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = chat.unreadCount.toString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White
+                    )
+                }
+            }
+
             if (chat.isPinned) {
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Icon(
                     imageVector = Icons.Default.PushPin,
                     contentDescription = "Pinned",
                     tint = Primary,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .rotate(45f)
+                    modifier = Modifier.size(16.dp).rotate(45f)
                 )
             }
         }

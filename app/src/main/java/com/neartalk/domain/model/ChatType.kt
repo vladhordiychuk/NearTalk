@@ -1,4 +1,4 @@
-package com.neartalk.models
+package com.neartalk.domain.model
 
 enum class ChatType {
     PRIVATE,

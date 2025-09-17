@@ -1,4 +1,4 @@
-package com.neartalk.models
+package com.neartalk.domain.model
 
 data class Chat(
     val id: Int,
