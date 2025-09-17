@@ -10,7 +10,7 @@ At the current stage, only a basic **UI prototype** is implemented.
 ## 🚀 Planned Features
 - [x] Basic UI screens (prototype)
 - [ ] User authentication
-- [ ] Sending and receiving messages via Bluetooth
+- [x] Sending and receiving messages via Bluetooth (prototype)
 - [ ] Group chats over Bluetooth mesh
 - [ ] Online sync when the Internet is available
 - [ ] Push notifications
