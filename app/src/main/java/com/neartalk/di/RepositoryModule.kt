@@ -1,9 +1,9 @@
 package com.neartalk.di
 
-import com.neartalk.data.local.MessageDao
 import com.neartalk.data.repository.MessageRepository
 import com.neartalk.data.repository.MessageRepositoryImpl
-import com.neartalk.domain.transport.Transport
+import com.neartalk.data.repository.UserRepository
+import com.neartalk.data.repository.UserRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -19,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindMessageRepository(
         impl: MessageRepositoryImpl
     ): MessageRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(
+        impl: UserRepositoryImpl
+    ): UserRepository
 }

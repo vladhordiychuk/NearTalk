@@ -15,8 +15,8 @@ class MessageRepositoryImpl @Inject constructor(
     private val messageDao: MessageDao,
     private val transport: Transport,
 ) : MessageRepository {
-    override fun getMessages(userId: String): Flow<List<Message>> {
-        return messageDao.getMessagesForUser(userId).map { entities ->
+    override fun getMessages(userId: String, receiverId: String): Flow<List<Message>> {
+        return messageDao.getMessagesForUser(userId, receiverId).map { entities ->
             entities.map { it.toDomain() }
         }
     }

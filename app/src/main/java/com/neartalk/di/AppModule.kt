@@ -2,6 +2,7 @@ package com.neartalk.di
 
 import android.content.Context
 import androidx.room.Room
+import com.neartalk.data.local.MessageDao
 import com.neartalk.data.local.MessageDatabase
 import dagger.Module
 import dagger.Provides
@@ -14,17 +15,4 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    @Provides
-    @Singleton
-    fun provideMessageDatabase(@ApplicationContext context: Context): MessageDatabase {
-        return Room.databaseBuilder(
-            context,
-            MessageDatabase::class.java,
-            "message_database"
-        ).build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideMessageDao(database: MessageDatabase) = database.messageDao()
 }

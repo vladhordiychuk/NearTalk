@@ -30,21 +30,21 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.animation.animateContentSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    userId: String,
-    receiverId: String,
+    userId: Int,
+    receiverId: Int,
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToFiles: () -> Unit,
-    userName: String = "Dima",
-    isOnline: Boolean = true,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(userId) {
-        viewModel.loadMessages(userId)
+    val user by viewModel.getUser(receiverId).collectAsState(initial = null)
+    LaunchedEffect(userId, receiverId) {
+        viewModel.loadMessages(userId, receiverId)
     }
 
     val messages by viewModel.messages.collectAsState()
@@ -56,13 +56,16 @@ fun ChatScreen(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = userName,
+                            text = user?.name ?: "Loading...",
                             color = PrimaryText,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = if (isOnline) "online" else "offline",
-                            color = if (isOnline) Online else SecondaryText,
+                            text = when (user?.status) {
+                                "online" -> "online"
+                                else -> "offline"
+                            },
+                            color = if (user?.status == "online") Online else SecondaryText,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -115,7 +118,7 @@ fun ChatScreen(
         ) {
             ChatMessages(
                 messages = messages,
-                userId = userId, // Pass userId to ChatMessages
+                userId = userId.toString(),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -137,12 +140,12 @@ fun ChatInputBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onNavigateToFiles) {
-            Icon(Icons.Default.AttachFile, contentDescription = "Attach file", tint = Primary)
+            Icon(Icons.Default.AttachFile, contentDescription = "Add file", tint = Primary)
         }
         NearTalkTextField(
             value = text,
             onValueChange = onTextChange,
-            placeholder = "Type a message...",
+            placeholder = "Type message...",
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 8.dp)
@@ -152,7 +155,7 @@ fun ChatInputBar(
                 Icon(Icons.Default.Send, contentDescription = "Send message", tint = Primary)
             }
         } else {
-            IconButton(onClick = { /* TODO: Implement voice recording */ }) {
+            IconButton(onClick = { /* TODO:  */ }) {
                 Icon(Icons.Default.Mic, contentDescription = "Record voice", tint = Primary)
             }
         }
@@ -167,7 +170,7 @@ fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = M
     LaunchedEffect(messages) {
         if (messages.isNotEmpty()) {
             coroutineScope.launch {
-                listState.animateScrollToItem(0)
+                listState.animateScrollToItem(messages.size - 1)
             }
         }
     }
@@ -175,7 +178,7 @@ fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = M
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        reverseLayout = true,
+        verticalArrangement = Arrangement.Bottom,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(messages, key = { it.id }) { message ->
@@ -186,23 +189,21 @@ fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = M
 
 @Composable
 fun MessageBubble(message: Message, userId: String) {
+    val isMe = message.senderId == userId
+    val backgroundColor = if (isMe) Primary else Surface
+    val textColor = if (isMe) MaterialTheme.colorScheme.onPrimary else PrimaryText
+
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-        horizontalArrangement = if (message.senderId == userId) Arrangement.End else Arrangement.Start
+        modifier = Modifier.fillMaxWidth().padding(4.dp),
+        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            color = if (message.senderId == userId) Primary else Surface,
-            shape = RoundedCornerShape(16.dp)
+            color = backgroundColor,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.animateContentSize()
         ) {
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = message.text,
-                    color = if (message.senderId == userId) SecondaryText else PrimaryText
-                )
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(text = message.text, color = textColor)
                 Text(
                     text = message.formattedTimestamp(),
                     color = SecondaryText,

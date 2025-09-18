@@ -11,6 +11,11 @@ interface MessageDao {
     @Insert
     suspend fun insert(message: MessageEntity)
 
-    @Query("SELECT * FROM messages WHERE senderId = :userId OR receiverId = :userId ORDER BY timestamp ASC")
-    fun getMessagesForUser(userId: String): Flow<List<MessageEntity>>
+    @Query("""
+    SELECT * FROM messages 
+    WHERE (senderId = :userId AND receiverId = :receiverId)
+       OR (senderId = :receiverId AND receiverId = :userId)
+    ORDER BY timestamp ASC
+""")
+    fun getMessagesForUser(userId: String, receiverId: String): Flow<List<MessageEntity>>
 }
