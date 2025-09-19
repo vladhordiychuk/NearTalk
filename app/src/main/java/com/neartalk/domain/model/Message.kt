@@ -12,12 +12,12 @@ enum class MessageStatus {
 
 @Serializable
 data class Message(
-    val id: String = UUID.randomUUID().toString(),
-    val text: String,
-    val senderId: String,
-    val receiverId: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val status: String = MessageStatus.SENT.name.lowercase()
+    val id: String = "",
+    val text: String = "",
+    val senderId: String = "",
+    val receiverId: String = "",
+    val timestamp: Long = 0L,
+    val status: String = ""
 ) {
     fun formattedTimestamp(): String {
         val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())

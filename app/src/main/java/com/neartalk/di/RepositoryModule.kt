@@ -1,5 +1,7 @@
 package com.neartalk.di
 
+import com.neartalk.data.repository.ChatRepository
+import com.neartalk.data.repository.ChatRepositoryImpl
 import com.neartalk.data.repository.MessageRepository
 import com.neartalk.data.repository.MessageRepositoryImpl
 import com.neartalk.data.repository.UserRepository
@@ -12,17 +14,17 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+interface RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindMessageRepository(
-        impl: MessageRepositoryImpl
-    ): MessageRepository
+    fun bindChatRepository(impl: ChatRepositoryImpl): ChatRepository
 
     @Binds
     @Singleton
-    abstract fun bindUserRepository(
-        impl: UserRepositoryImpl
-    ): UserRepository
+    fun bindMessageRepository(impl: MessageRepositoryImpl): MessageRepository
+
+    @Binds
+    @Singleton
+    fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
 }

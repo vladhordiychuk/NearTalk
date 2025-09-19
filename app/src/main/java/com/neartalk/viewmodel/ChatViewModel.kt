@@ -11,9 +11,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
@@ -21,7 +22,7 @@ class ChatViewModel @Inject constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
 
-    fun getUser(receiverId: Int): Flow<User?> {
+    fun getUser(receiverId: String): Flow<User?> { // Змінено з Int на String
         return userRepository.getUserById(receiverId)
     }
 
@@ -31,14 +32,14 @@ class ChatViewModel @Inject constructor(
     private val _inputText = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText.asStateFlow()
 
-    fun loadMessages(userId: Int, receiverId: Int) {
+    fun loadMessages(userId: String, receiverId: String) { // Змінено з Int на String
         viewModelScope.launch {
             try {
-                messageRepository.getMessages(userId.toString(), receiverId.toString()).collect { messages ->
+                messageRepository.getMessagesForUser(userId, receiverId).collect { messages ->
                     _messages.value = messages
                 }
             } catch (e: Exception) {
-
+                println("DEBUG: Error loading messages: ${e.message}")
             }
         }
     }
@@ -47,14 +48,15 @@ class ChatViewModel @Inject constructor(
         _inputText.value = newText
     }
 
-    fun onMessageSent(userId: Int, receiverId: Int) {
+    fun onMessageSent(userId: String, receiverId: String) { // Змінено з Int на String
         val text = _inputText.value
         if (text.isBlank()) return
 
         val newMessage = Message(
+            id = UUID.randomUUID().toString(),
             text = text,
-            senderId = userId.toString(),
-            receiverId = receiverId.toString(),
+            senderId = userId,
+            receiverId = receiverId,
             timestamp = System.currentTimeMillis(),
             status = MessageStatus.SENT.name.lowercase()
         )
@@ -63,10 +65,10 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                messageRepository.sendMessage(newMessage)
+                messageRepository.insertMessage(newMessage)
             } catch (e: Exception) {
+                println("DEBUG: Error sending message: ${e.message}")
             }
         }
     }
-
 }

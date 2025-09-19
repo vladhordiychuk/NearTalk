@@ -1,5 +1,8 @@
 package com.neartalk.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,26 +12,29 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.neartalk.domain.model.Chat
+import com.neartalk.ui.theme.*
+import com.neartalk.viewmodel.HomeViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.text.style.TextOverflow
-import com.neartalk.ui.theme.*
-import androidx.compose.ui.graphics.Color
-import com.neartalk.viewmodel.HomeViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToChat: (Int) -> Unit,
+    onNavigateToChat: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToContacts: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -49,7 +55,7 @@ fun HomeScreen(
                     )
                 },
                 navigationIcon = {
-                    TextButton(onClick = { /* дія */ }) {
+                    TextButton(onClick = { /* TODO: Додати дію для редагування */ }) {
                         Text(
                             text = "Edit",
                             color = Primary,
@@ -77,12 +83,13 @@ fun HomeScreen(
         bottomBar = {
             NavigationBar(
                 containerColor = Primary,
-                contentColor = OnPrimary,
+                contentColor = OnPrimary
             ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
-                    onClick = { viewModel.selectedTab.value = 0
-                                onNavigateToContacts()
+                    onClick = {
+                        viewModel.selectedTab.value = 0
+                        onNavigateToContacts()
                     },
                     icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Contacts") },
                     label = { Text("Contacts") },
@@ -109,8 +116,9 @@ fun HomeScreen(
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
-                    onClick = { viewModel.selectedTab.value = 2
-                                onNavigateToSettings()
+                    onClick = {
+                        viewModel.selectedTab.value = 2
+                        onNavigateToSettings()
                     },
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
                     label = { Text("Settings") },
@@ -156,7 +164,11 @@ fun HomeScreen(
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.filterChats("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = SecondaryText)
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = SecondaryText
+                            )
                         }
                     }
                 }
@@ -165,94 +177,194 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(chats) { chat ->
-                    ChatRow(chat = chat, onClick = { onNavigateToChat(chat.id) })
-                    Divider(color = Surface, thickness = 1.dp)
+                items(chats, key = { it.id }) { chat ->
+                    var visible by rememberSaveable { mutableStateOf(true) }
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        ChatRow(
+                            chat = chat,
+                            onClick = {
+                                chat.participantId?.let { participantId ->
+                                    println("DEBUG: Navigating to chat with participantId: $participantId")
+                                    onNavigateToChat(participantId)
+                                } ?: println("DEBUG: participantId is null for chat: ${chat.id}")
+                            },
+                            onDelete = {
+                                visible = false
+                                viewModel.deleteChat(it)
+                            },
+                            onPin = { viewModel.togglePinChat(it) },
+                            onMute = { viewModel.toggleMuteChat(it) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatRow(chat: Chat, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(if (chat.isPinned) Surface else Background)
-            .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.AccountCircle,
-            contentDescription = "Avatar",
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape),
-            tint = Primary
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(chat.name, style = MaterialTheme.typography.bodyLarge, color = PrimaryText)
-            Text(
-                chat.lastMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = SecondaryText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+fun ChatRow(
+    chat: Chat,
+    onClick: () -> Unit,
+    onDelete: (Chat) -> Unit,
+    onPin: (Chat) -> Unit,
+    onMute: (Chat) -> Unit
+) {
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDelete(chat)
+                    true
+                }
+                else -> false
+            }
         }
+    )
 
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Top
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    .format(Date(chat.time * 1000))
+    SwipeToDismissBox(
+        state = swipeState,
+        backgroundContent = {
+            val progress by animateFloatAsState(
+                targetValue = swipeState.progress,
+                label = "swipeProgress"
+            )
+            val backgroundColor by animateColorAsState(
+                targetValue = when {
+                    swipeState.targetValue == SwipeToDismissBoxValue.EndToStart -> Color.Red
+                    progress > 0.6f -> Color.Gray.copy(alpha = 0.9f)
+                    else -> Background
+                },
+                label = "backgroundColor"
+            )
 
-                if (chat.isSentByMe) {
-                    if (chat.isRead) {
-                        Box {
-                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(14.dp))
-                            Icon(Icons.Default.Check, contentDescription = "Read", tint = Primary, modifier = Modifier.size(14.dp).offset(x = 4.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (progress < 0.8f) {
+                        IconButton(
+                            onClick = { onMute(chat) },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Surface, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = if (chat.isMuted) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                                contentDescription = if (chat.isMuted) "Unmute" else "Mute",
+                                tint = Primary
+                            )
                         }
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = "Sent", tint = SecondaryText, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { onPin(chat) },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Surface, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = if (chat.isPinned) "Unpin" else "Pin",
+                                tint = Primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    IconButton(
+                        onClick = { onDelete(chat) },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color.Red, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.White
+                        )
                     }
                 }
-
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(formattedTime, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
             }
-
-            if (chat.unreadCount > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
+        },
+        content = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (chat.isPinned) Surface else Background)
+                    .clickable { onClick() }
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Avatar",
                     modifier = Modifier
-                        .background(Primary, shape = CircleShape)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    tint = Primary
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = chat.unreadCount.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White
+                        text = chat.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = PrimaryText
+                    )
+                    Text(
+                        text = chat.lastMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SecondaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
-
-            if (chat.isPinned) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Icon(
-                    imageVector = Icons.Default.PushPin,
-                    contentDescription = "Pinned",
-                    tint = Primary,
-                    modifier = Modifier.size(16.dp).rotate(45f)
-                )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    val formattedTime = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        .format(Date(chat.time * 1000))
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText
+                    )
+                    if (chat.unreadCount > 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(Primary, shape = CircleShape)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = chat.unreadCount.toString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    if (chat.isPinned) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.PushPin,
+                            contentDescription = "Pinned",
+                            tint = Primary,
+                            modifier = Modifier.size(16.dp).rotate(45f)
+                        )
+                    }
+                }
             }
         }
-    }
+    )
 }

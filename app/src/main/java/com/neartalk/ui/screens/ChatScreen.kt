@@ -4,39 +4,39 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.neartalk.ui.theme.Primary
-import com.neartalk.ui.theme.PrimaryText
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Send
-import com.neartalk.ui.theme.Online
-import com.neartalk.ui.theme.Surface
-import com.neartalk.ui.components.NearTalkTextField
 import androidx.compose.material.icons.filled.Mic
-import com.neartalk.viewmodel.ChatViewModel
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.neartalk.ui.theme.SecondaryText
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.rememberCoroutineScope
-import com.neartalk.domain.model.Message
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Send
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.neartalk.domain.model.Message
+import com.neartalk.ui.components.NearTalkTextField
+import com.neartalk.ui.theme.Online
+import com.neartalk.ui.theme.Primary
+import com.neartalk.ui.theme.PrimaryText
+import com.neartalk.ui.theme.SecondaryText
+import com.neartalk.ui.theme.Surface
+import com.neartalk.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    userId: Int,
-    receiverId: Int,
+    userId: String, // Змінено з Int на String
+    receiverId: String, // Змінено з Int на String
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToFiles: () -> Unit,
@@ -118,7 +118,7 @@ fun ChatScreen(
         ) {
             ChatMessages(
                 messages = messages,
-                userId = userId.toString(),
+                userId = userId, // Уже String
                 modifier = Modifier.weight(1f)
             )
         }
@@ -155,7 +155,7 @@ fun ChatInputBar(
                 Icon(Icons.Default.Send, contentDescription = "Send message", tint = Primary)
             }
         } else {
-            IconButton(onClick = { /* TODO:  */ }) {
+            IconButton(onClick = { /* TODO: Додати запис голосу */ }) {
                 Icon(Icons.Default.Mic, contentDescription = "Record voice", tint = Primary)
             }
         }

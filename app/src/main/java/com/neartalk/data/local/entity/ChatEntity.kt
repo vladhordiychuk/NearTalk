@@ -1,7 +1,12 @@
-package com.neartalk.domain.model
+package com.neartalk.data.local.entity
 
-data class Chat(
-    val id: String = "",
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.neartalk.domain.model.ChatType
+
+@Entity(tableName = "chats")
+data class ChatEntity(
+    @PrimaryKey val id: String = "",
     val name: String = "",
     val participantId: String? = null,
     val chatType: ChatType = ChatType.PRIVATE,
@@ -12,9 +17,5 @@ data class Chat(
     val isMuted: Boolean = false,
     val draftMessage: String = "",
     val archived: Boolean = false,
-    val avatarUrl: String? = null,
-    val isSentByMe: Boolean = false,
-    val isRead: Boolean = false,
-    val isOnline: Boolean = false,
-    val messages: List<Message> = emptyList()
+    val avatarUrl: String? = null
 )

@@ -25,7 +25,8 @@ fun AppNavigation(navController: NavHostController) {
             viewModel.selectedTab.value = 1
             HomeScreen(
                 onNavigateToChat = { receiverId ->
-                    navController.navigate("chat/0/$receiverId")
+                    // Передаємо current_user як userId і receiverId як String
+                    navController.navigate("chat/current_user/$receiverId")
                 },
                 onNavigateToProfile = { navController.navigate("profile") },
                 onNavigateToContacts = { navController.navigate("contacts") },
@@ -36,21 +37,28 @@ fun AppNavigation(navController: NavHostController) {
         composable(
             route = "chat/{userId}/{receiverId}",
             arguments = listOf(
-                navArgument("userId") { type = NavType.IntType },
-                navArgument("receiverId") { type = NavType.IntType }
+                navArgument("userId") { type = NavType.StringType }, // Змінено з IntType на StringType
+                navArgument("receiverId") { type = NavType.StringType } // Змінено з IntType на StringType
             )
         ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getInt("userId") ?: 0
-            val receiverId = backStackEntry.arguments?.getInt("receiverId") ?: 0
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            val receiverId = backStackEntry.arguments?.getString("receiverId") ?: ""
             ChatScreen(
                 userId = userId,
                 receiverId = receiverId,
                 onBack = { navController.popBackStack() },
-                onNavigateToProfile = { navController.navigate("profile") },
+                onNavigateToProfile = { navController.navigate("profile/$receiverId") }, // Додано receiverId для профілю
                 onNavigateToFiles = { navController.navigate("files") }
             )
         }
         composable("profile") {
+            ProfileScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = "profile/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
             ProfileScreen(onBack = { navController.popBackStack() })
         }
         composable("login") {

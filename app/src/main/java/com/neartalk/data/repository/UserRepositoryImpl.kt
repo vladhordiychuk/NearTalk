@@ -7,11 +7,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
+
 class UserRepositoryImpl @Inject constructor(
     private val userDao: UserDao
 ) : UserRepository {
 
-    override fun getUserById(userId: Int): Flow<User?> {
+    override fun getUserById(userId: String): Flow<User?> {
         return userDao.getUserById(userId).map { entity ->
             entity?.toDomain()
         }
@@ -23,16 +24,25 @@ class UserRepositoryImpl @Inject constructor(
             entities.map { it.toDomain() }
         }
     }
-}
 
-private fun UserEntity.toDomain(): User {
-    return User(
-        id = id,
-        name = name,
-        username = username,
-        phone = phone,
-        email = email,
-        birthday = birthday,
-        status = status
-    )
+    override suspend fun deleteUser(userId: String) {
+        userDao.deleteUser(userId)
+    }
+
+    override suspend fun updatePinStatus(userId: String, isPinned: Boolean) {
+        userDao.updatePinStatus(userId, isPinned)
+    }
+
+    private fun UserEntity.toDomain(): User {
+        return User(
+            id = id,
+            name = name,
+            username = username,
+            phone = phone,
+            email = email,
+            birthday = birthday,
+            status = status,
+            isPinned = isPinned
+        )
+    }
 }
