@@ -38,7 +38,7 @@ It allows users to communicate peer-to-peer using **Bluetooth**, making it perfe
 ## 📦 How to Install
 You can download the latest APK file from the [Releases](../../releases) page.
 
-1. **Download** `NearTalk_v1.0.apk`.
+1. **Download** `NearTalk.apk`.
 2. **Install** the application (allow installation from unknown sources if prompted).
 3. **⚠️ Important Permission Step:**
    Before finding devices, you must grant permissions. The app requires:
