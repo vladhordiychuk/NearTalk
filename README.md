@@ -53,3 +53,8 @@ You can download the latest APK file from the [Releases](../../releases) page.
 - [ ] Image and file sharing
 - [ ] Background connection stability improvements
 - [ ] Bluetooth Low Energy (BLE) support
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
