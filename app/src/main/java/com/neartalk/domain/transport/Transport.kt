@@ -1,5 +1,4 @@
 package com.neartalk.domain.transport
-
 import com.neartalk.domain.model.Message
 import kotlinx.coroutines.flow.Flow
 

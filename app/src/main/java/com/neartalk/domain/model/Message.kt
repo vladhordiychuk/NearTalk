@@ -1,13 +1,21 @@
 package com.neartalk.domain.model
 
+import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
-import kotlinx.serialization.Serializable
+
+enum class MessageType {
+    TEXT,
+    NAME_UPDATE
+}
 
 enum class MessageStatus {
-    SENT, DELIVERED, READ
+    SENT,
+    RECEIVED,
+    DELIVERED,
+    READ,
+    FAILED,
 }
 
 @Serializable
@@ -17,7 +25,8 @@ data class Message(
     val senderId: String = "",
     val receiverId: String = "",
     val timestamp: Long = 0L,
-    val status: String = ""
+    val status: String = "",
+    val type: MessageType = MessageType.TEXT // Нове поле
 ) {
     fun formattedTimestamp(): String {
         val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())

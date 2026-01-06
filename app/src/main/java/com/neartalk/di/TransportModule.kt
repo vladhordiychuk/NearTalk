@@ -1,10 +1,8 @@
 package com.neartalk.di
-
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
-import com.neartalk.data.bluetooth.BluetoothTransport
-import com.neartalk.domain.transport.Transport
-import com.neartalk.domain.transport.TransportManager
+import com.neartalk.data.bluetooth.AndroidBluetoothController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,25 +13,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object TransportModule {
-
     @Provides
     @Singleton
-    fun provideBluetoothAdapter(): BluetoothAdapter {
-        return BluetoothAdapter.getDefaultAdapter()
+    fun provideBluetoothAdapter(@ApplicationContext context: Context): BluetoothAdapter? {
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        return manager.adapter
     }
 
     @Provides
     @Singleton
-    fun provideBluetoothTransport(
-        adapter: BluetoothAdapter,
-        @ApplicationContext context: Context
-    ): Transport {
-        return BluetoothTransport(adapter, context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTransportManager(bluetoothTransport: Transport): TransportManager {
-        return TransportManager(bluetoothTransport)
+    fun provideBluetoothController(
+        @ApplicationContext context: Context,
+        adapter: BluetoothAdapter?
+    ): AndroidBluetoothController {
+        return AndroidBluetoothController(context, adapter)
     }
 }

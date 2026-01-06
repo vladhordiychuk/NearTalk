@@ -2,54 +2,49 @@ package com.neartalk.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Primary = Color(0xFF7C4DFF)
-val PrimaryDark = Color(0xFF651FFF)
+// Primary - Emerald Green
+val Primary = Color(0xFF006C4C)
+val PrimaryDark = Color(0xFF4CE2B4)
+val PrimaryContainer = Color(0xFF6FF8CF) // Світла м'ята
+val OnPrimary = Color(0xFFFFFFFF)
+val OnPrimaryContainer = Color(0xFF002114)
 
-val Secondary = Color(0xFF03DAC6)
-val SecondaryDark = Color(0xFF00BFA5)
+// Secondary - Teal
+val Secondary = Color(0xFF4D6357)
+val SecondaryDark = Color(0xFFB3CCBE)
+val SecondaryContainer = Color(0xFFD5E8D9)
+val OnSecondary = Color(0xFFFFFFFF)
+val OnSecondaryContainer = Color(0xFF0B1F16)
 
-val Tertiary = Color(0xFF00C853)
-val TertiaryDark = Color(0xFF00E676)
+// Background & Surface
+val BackgroundLight = Color(0xFFFBFDF9)
+val BackgroundDark = Color(0xFF191C1A)
 
-val Background = Color(0xFFFFFFFF)
-val BackgroundDark = Color(0xFF121212)
+val SurfaceLight = Color(0xFFFBFDF9)
+val SurfaceDark = Color(0xFF191C1A)
 
-val Surface = Color(0xFFF5F5F5)
-val SurfaceDark = Color(0xFF1E1E1E)
+// Containers
+val SurfaceContainerLight = Color(0xFFF0F5F1)
+val SurfaceContainerDark = Color(0xFF1E211F)
+val SurfaceContainerHighLight = Color(0xFFEBEFEA)
+val SurfaceContainerHighDark = Color(0xFF252926)
 
-val SentMessage = Primary.copy(alpha = 0.9f)
-val SentMessageDark = PrimaryDark.copy(alpha = 0.8f)
+// Text colors
+val OnBackgroundLight = Color(0xFF191C1A)
+val OnBackgroundDark = Color(0xFFE1E3DF)
 
-val ReceivedMessage = Color(0xFFEDEDED)
-val ReceivedMessageDark = Color(0xFF2A2A2A)
+val OnSurfaceLight = Color(0xFF191C1A)
+val OnSurfaceDark = Color(0xFFE1E3DF)
 
-val PrimaryText = Color(0xFF202124)
-val SecondaryText = Color(0xFF5F6368)
+val OnSurfaceVariantLight = Color(0xFF404943)
+val OnSurfaceVariantDark = Color(0xFFBEC9C0)
 
-val PrimaryTextDark = Color(0xFFECEFF1)
-val SecondaryTextDark = Color(0xFF9E9E9E)
+// Outline
+val OutlineLight = Color(0xFF707973)
+val OutlineDark = Color(0xFF8A938C)
 
-val Accent = Primary
-val AccentDark = PrimaryDark
-
-val Online = Color(0xFF34C759)
-val Offline = Color(0xFF9E9E9E)
-val Busy = Color(0xFFFF3B30)
-val Away = Color(0xFFFFC107)
-
-val OnlineDark = Color(0xFF30D158)
-val OfflineDark = Color(0xFF7F8C8D)
-val BusyDark = Color(0xFFFF453A)
-val AwayDark = Color(0xFFFFD60A)
-
-val Error = Color(0xFFB00020)
-val ErrorDark = Color(0xFFCF6679)
-
-val OnPrimary = Color.White
-val OnSecondary = Color.Black
-val OnTertiary = Color.White
-val OnBackgroundLight = PrimaryText
-val OnBackgroundDark = Color.White
-val OnSurfaceLight = PrimaryText
-val OnSurfaceDark = Color.White
-val OnError = Color.White
+// Status
+val Online = Color(0xFF006E1C)
+val Offline = Color(0xFF72796F)
+val Error = Color(0xFFBA1A1A)
+val ErrorContainer = Color(0xFFFFDAD6)
