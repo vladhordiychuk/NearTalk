@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.neartalk.ui.screens.ChatScreen
 import com.neartalk.ui.screens.DevicesScreen
+import com.neartalk.ui.screens.ModeSelectionScreen
 import com.neartalk.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -19,20 +20,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun AppNavigation(
     navController: NavHostController,
-    onMakeDiscoverable: () -> Unit,
-    myAddress: String
+    onMakeDiscoverable: () -> Unit
 ) {
     val chatViewModel: ChatViewModel = hiltViewModel()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-
-    val isConnected by chatViewModel.isConnected.collectAsState(initial = false)
-
-    LaunchedEffect(isConnected) {
-        if (isConnected && drawerState.isOpen) {
-            drawerState.close()
-        }
-    }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         ModalNavigationDrawer(
@@ -41,38 +33,46 @@ fun AppNavigation(
             drawerContent = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     DevicesScreen(
-                        onConnect = { deviceId, deviceName ->
+                        onConnect = { deviceMac, _ ->
+                            chatViewModel.connectToDevice(deviceMac)
+
                             scope.launch { drawerState.close() }
-                            navController.navigate("chat/$myAddress/$deviceId") {
-                                popUpTo("chat/$myAddress/") { inclusive = false }
-                            }
                         },
                         onCloseDrawer = {
                             scope.launch { drawerState.close() }
-                        },
-                        onMakeDiscoverable = onMakeDiscoverable
+                        }
                     )
                 }
             }
         ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                NavHost(
-                    navController = navController,
-                    startDestination = "chat/$myAddress/"
-                ) {
-                    composable(
-                        route = "chat/{userId}/{receiverId}",
-                        arguments = listOf(
-                            navArgument("userId") { type = NavType.StringType },
-                            navArgument("receiverId") { type = NavType.StringType }
+                NavHost(navController = navController, startDestination = "hub") {
+                    composable("hub") {
+                        ModeSelectionScreen(
+                            viewModel = chatViewModel,
+                            onOpenBroadcast = {
+                                navController.navigate("chat_broadcast")
+                            },
+                            onOpenChat = { peerId ->
+                                val key = java.util.UUID.randomUUID().toString()
+                                navController.navigate("chat_private/$peerId/$key")
+                            },
+                            onOpenSettings = {
+                                scope.launch { drawerState.open() }
+                            },
+                            onMakeDiscoverable = onMakeDiscoverable
                         )
-                    ) { backStackEntry ->
-                        val receiverId = backStackEntry.arguments?.getString("receiverId") ?: ""
+                    }
+
+                    composable("chat_broadcast") {
+                        LaunchedEffect(Unit) {
+                            chatViewModel.setChatMode(ChatViewModel.ChatMode.BROADCAST)
+                        }
 
                         ChatScreen(
-                            receiverId = receiverId,
+                            receiverId = "ALL",
+                            isPrivate = false,
                             onBack = {
-                                chatViewModel.disconnect()
                                 navController.popBackStack()
                             },
                             onOpenDrawer = {
@@ -83,18 +83,27 @@ fun AppNavigation(
                     }
 
                     composable(
-                        route = "chat/{userId}/",
+                        route = "chat_private/{peerId}/{key}",
                         arguments = listOf(
-                            navArgument("userId") { type = NavType.StringType }
+                            navArgument("peerId") { type = NavType.StringType },
+                            navArgument("key") { type = NavType.StringType }
                         )
-                    ) { backStackEntry ->
-                        LaunchedEffect(Unit) {
-                            chatViewModel.startSession()
+                    ) { entry ->
+                        val peerId = entry.arguments?.getString("peerId") ?: ""
+
+                        LaunchedEffect(peerId) {
+                            val peer = chatViewModel.availablePeers.value.find { it.id == peerId }
+                            if (peer != null) {
+                                chatViewModel.selectPeer(peer)
+                            }
                         }
 
                         ChatScreen(
-                            receiverId = "",
-                            onBack = { },
+                            receiverId = peerId,
+                            isPrivate = true,
+                            onBack = {
+                                navController.popBackStack()
+                            },
                             onOpenDrawer = {
                                 scope.launch { drawerState.open() }
                             },

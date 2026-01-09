@@ -4,29 +4,27 @@ import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 enum class MessageType {
     TEXT,
-    NAME_UPDATE
-}
-
-enum class MessageStatus {
-    SENT,
-    RECEIVED,
-    DELIVERED,
-    READ,
-    FAILED,
+    NAME_UPDATE,
+    DELIVERY_ACK,
+    DEVICE_ANNOUNCE
 }
 
 @Serializable
 data class Message(
-    val id: String = "",
+    val id: String = UUID.randomUUID().toString(),
     val text: String = "",
     val senderId: String = "",
-    val receiverId: String = "",
-    val timestamp: Long = 0L,
-    val status: String = "",
-    val type: MessageType = MessageType.TEXT // Нове поле
+    val senderName: String = "User",
+    val receiverId: String = "ALL",
+    val timestamp: Long = System.currentTimeMillis(),
+    val ttl: Int = 7,
+    val contentHash: String = "",
+    val type: MessageType = MessageType.TEXT,
+    val status: String = "sent"
 ) {
     fun formattedTimestamp(): String {
         val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())

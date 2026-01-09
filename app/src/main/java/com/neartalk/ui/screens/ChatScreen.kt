@@ -17,19 +17,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.neartalk.domain.model.Message
+import com.neartalk.ui.theme.Online
 import com.neartalk.viewmodel.ChatViewModel
-import com.neartalk.ui.theme.Online // Імпортуємо статусний колір
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     receiverId: String,
+    isPrivate: Boolean,
     onBack: () -> Unit,
     onOpenDrawer: () -> Unit,
     viewModel: ChatViewModel = hiltViewModel()
@@ -38,14 +42,32 @@ fun ChatScreen(
     val inputText by viewModel.inputText.collectAsState()
     val peerName by viewModel.currentPeerName.collectAsState()
     val myName by viewModel.myDisplayName.collectAsState()
-    val isConnected = viewModel.isConnected.collectAsState(initial = false).value
-
+    val connectionState by viewModel.connectionState.collectAsState()
     val myUserId = remember { viewModel.getMyUserId() }
+
     var isNameEditVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(receiverId) {
-        if (receiverId.isNotBlank()) {
-            viewModel.connectToDevice(receiverId)
+    LaunchedEffect(receiverId, isPrivate) {
+        if (isPrivate) {
+            val peer = viewModel.availablePeers.value.find { it.id == receiverId }
+            if (peer != null) {
+                viewModel.selectPeer(peer)
+            }
+        } else {
+            viewModel.setChatMode(ChatViewModel.ChatMode.BROADCAST)
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -53,14 +75,15 @@ fun ChatScreen(
         topBar = {
             Column {
                 MinimalTopBar(
-                    peerName = peerName,
-                    isConnected = isConnected,
+                    title = if (isPrivate) peerName else "Глобальний Чат",
+                    isPrivate = isPrivate,
+                    connectionState = connectionState,
                     onBack = {
-                        viewModel.disconnect()
+                        viewModel.setChatMode(ChatViewModel.ChatMode.BROADCAST)
                         onBack()
                     },
                     onToggleNameEdit = { isNameEditVisible = !isNameEditVisible },
-                    onOpenDrawer = onOpenDrawer,
+                    onOpenDrawer = if (isPrivate) onOpenDrawer else null,
                     isEditActive = isNameEditVisible
                 )
 
@@ -74,22 +97,19 @@ fun ChatScreen(
                         onNameChange = { viewModel.updateMyName(it) }
                     )
                 }
-                // Розділювач кольору outlineVariant (м'який сірий)
+
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         },
         bottomBar = {
-            if (isConnected) {
-                MinimalInputBar(
-                    text = inputText,
-                    onTextChange = viewModel::onInputChanged,
-                    onSent = { viewModel.sendMessage() },
-                    enabled = isConnected,
-                    modifier = Modifier.imePadding()
-                )
-            }
+            MinimalInputBar(
+                text = inputText,
+                onTextChange = viewModel::onInputChanged,
+                onSent = { viewModel.sendMessage() },
+                enabled = true,
+                modifier = Modifier.imePadding()
+            )
         },
-        // Фон береться з теми
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets
     ) { innerPadding ->
@@ -98,8 +118,11 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (!isConnected) {
-                WaitingState()
+            if (messages.isEmpty()) {
+                EmptyChatState(
+                    text = if (isPrivate) "Немає повідомлень з цим пристроєм" else "Напишіть повідомлення всім навколо",
+                    isConnecting = isPrivate && connectionState == ChatViewModel.ConnectionState.CONNECTING
+                )
             } else {
                 ChatMessages(
                     messages = messages,
@@ -112,57 +135,13 @@ fun ChatScreen(
 }
 
 @Composable
-fun MyNameEditorBar(name: String, onNameChange: (String) -> Unit) {
-    // SurfaceVariant - трохи відрізняється від фону
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp, 8.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Я відображаюсь як:",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                    .padding(12.dp, 6.dp)
-            ) {
-                if (name.isEmpty()) {
-                    Text(
-                        text = "Введіть ім'я...",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        fontSize = 14.sp
-                    )
-                }
-                BasicTextField(
-                    value = name,
-                    onValueChange = onNameChange,
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun MinimalTopBar(
-    peerName: String,
-    isConnected: Boolean,
+    title: String,
+    isPrivate: Boolean,
+    connectionState: ChatViewModel.ConnectionState,
     onBack: () -> Unit,
     onToggleNameEdit: () -> Unit,
-    onOpenDrawer: () -> Unit,
+    onOpenDrawer: (() -> Unit)?,
     isEditActive: Boolean
 ) {
     Surface(
@@ -176,53 +155,71 @@ fun MinimalTopBar(
                 .height(56.dp)
                 .padding(horizontal = 4.dp)
         ) {
-            // ЛІВА ЧАСТИНА
             IconButton(
                 onClick = onBack,
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
                 Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Вихід",
+                    Icons.Default.ArrowBack,
+                    contentDescription = "Назад",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            // ЦЕНТР (Абсолютне позиціювання)
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AnimatedContent(
-                    targetState = peerName,
+                    targetState = title,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "name"
-                ) { name ->
+                    label = "title"
+                ) { targetTitle ->
                     Text(
-                        text = name,
+                        text = targetTitle,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                AnimatedVisibility(visible = isConnected) {
+
+                if (isPrivate) {
+                    val statusText = when (connectionState) {
+                        ChatViewModel.ConnectionState.CONNECTING -> "підключення..."
+                        ChatViewModel.ConnectionState.CONNECTED -> "онлайн"
+                        ChatViewModel.ConnectionState.FAILED -> "помилка"
+                        else -> "офлайн"
+                    }
+
+                    val statusColor = when (connectionState) {
+                        ChatViewModel.ConnectionState.CONNECTING -> MaterialTheme.colorScheme.primary
+                        ChatViewModel.ConnectionState.CONNECTED -> Online
+                        ChatViewModel.ConnectionState.FAILED -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
-                                .background(Online, CircleShape) // Зелений статус
+                                .background(statusColor, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "онлайн",
+                            text = statusText,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                } else {
+                    Text(
+                        text = "Mesh Network",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
                 }
             }
 
-            // ПРАВА ЧАСТИНА
             Row(
                 modifier = Modifier.align(Alignment.CenterEnd),
                 verticalAlignment = Alignment.CenterVertically
@@ -231,16 +228,66 @@ fun MinimalTopBar(
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Ім'я",
-                        tint = if (isEditActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (isEditActive) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onOpenDrawer) {
-                    Icon(
-                        imageVector = Icons.Default.BluetoothSearching,
-                        contentDescription = "Пристрої",
-                        tint = MaterialTheme.colorScheme.primary
+
+                if (onOpenDrawer != null) {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(
+                            imageVector = Icons.Default.BluetoothSearching,
+                            contentDescription = "Пристрої",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MyNameEditorBar(name: String, onNameChange: (String) -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp, 8.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Я відображаюсь як:",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                    .padding(12.dp, 6.dp)
+            ) {
+                if (name.isEmpty()) {
+                    Text(
+                        text = "Введіть ім'я...",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        fontSize = 14.sp
                     )
                 }
+
+                BasicTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -280,7 +327,7 @@ fun MinimalInputBar(
                     )
                 },
                 modifier = Modifier.weight(1f),
-                enabled = enabled,
+                enabled = true,
                 shape = RoundedCornerShape(24.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = inputBg,
@@ -296,7 +343,8 @@ fun MinimalInputBar(
                 maxLines = 4
             )
 
-            val hasText = enabled && text.isNotBlank()
+            val hasText = text.isNotBlank()
+
             IconButton(
                 onClick = onSent,
                 enabled = hasText,
@@ -311,7 +359,8 @@ fun MinimalInputBar(
                 Icon(
                     Icons.Default.Send,
                     contentDescription = null,
-                    tint = if (hasText) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    tint = if (hasText) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -320,63 +369,60 @@ fun MinimalInputBar(
 }
 
 @Composable
-fun WaitingState() {
+fun EmptyChatState(text: String, isConnecting: Boolean) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                Icons.Default.BluetoothSearching,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-            Text(
-                text = "Очікування підключення...",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (isConnecting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4.dp
+                )
+                Text(
+                    text = "Підключення...",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Icon(
+                    Icons.Default.ChatBubbleOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Text(
+                    text = text,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
-// У ChatScreen.kt
-
 @Composable
 fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
-
-    // 1. Беремо список повідомлень і перевертаємо його.
-    // [Старе, Нове] -> перетворюється на -> [Нове, Старе]
-    // Тепер "Нове" має індекс 0.
     val reversedMessages = remember(messages) { messages.reversed() }
 
-    // Автоскрол до низу (тобто до індексу 0 при reverseLayout) при появі нових повідомлень
     LaunchedEffect(reversedMessages.size) {
         if (reversedMessages.isNotEmpty()) {
             listState.animateScrollToItem(0)
         }
     }
 
-    if (messages.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Почніть розмову", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            state = listState,
-            // 2. Вмикаємо реверс лейауту.
-            // Це означає: "Малюй елемент з індексом 0 у самому низу екрану".
-            reverseLayout = true,
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)
-        ) {
-            // Передаємо перевернутий список, де Нове повідомлення — перше
-            items(reversedMessages, key = { it.id }) { msg ->
-                MinimalMessageBubble(msg, userId)
-            }
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState,
+        reverseLayout = true,
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom)
+    ) {
+        items(reversedMessages, key = { it.id }) { msg ->
+            MinimalMessageBubble(msg, userId)
         }
     }
 }
@@ -384,10 +430,10 @@ fun ChatMessages(messages: List<Message>, userId: String, modifier: Modifier = M
 @Composable
 fun MinimalMessageBubble(message: Message, userId: String) {
     val isMe = message.senderId == userId
-
-    // Кольори з теми
-    val bubbleColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val contentColor = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val bubbleColor = if (isMe) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (isMe) MaterialTheme.colorScheme.onPrimary
+    else MaterialTheme.colorScheme.onSurfaceVariant
 
     Box(
         modifier = Modifier
@@ -407,19 +453,51 @@ fun MinimalMessageBubble(message: Message, userId: String) {
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(modifier = Modifier.padding(14.dp, 10.dp)) {
+                if (!isMe && message.senderName.isNotBlank()) {
+                    Text(
+                        text = message.senderName,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
                 Text(
                     text = message.text,
                     color = contentColor,
                     fontSize = 15.sp
                 )
-                Text(
-                    text = message.formattedTimestamp(),
-                    color = contentColor.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
+
+                Row(
                     modifier = Modifier
                         .align(Alignment.End)
-                        .padding(top = 4.dp)
-                )
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = message.formattedTimestamp(),
+                        color = contentColor.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+
+                    if (isMe) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = when (message.status) {
+                                "delivered" -> Icons.Default.DoneAll
+                                "error" -> Icons.Default.ErrorOutline
+                                else -> Icons.Default.Done
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = when (message.status) {
+                                "error" -> MaterialTheme.colorScheme.error
+                                else -> contentColor.copy(alpha = 0.7f)
+                            }
+                        )
+                    }
+                }
             }
         }
     }

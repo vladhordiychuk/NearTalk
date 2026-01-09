@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +30,6 @@ import com.neartalk.viewmodel.DevicesViewModel.ScanState
 fun DevicesScreen(
     onConnect: (deviceId: String, deviceName: String) -> Unit,
     onCloseDrawer: () -> Unit,
-    onMakeDiscoverable: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DevicesViewModel = hiltViewModel()
 ) {
@@ -43,7 +41,6 @@ fun DevicesScreen(
         viewModel.startScan()
     }
 
-    // Використовуємо кольори теми для Drawer
     ModalDrawerSheet(
         modifier = modifier.fillMaxWidth(0.85f),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
@@ -57,11 +54,9 @@ fun DevicesScreen(
             DevicesHeader(
                 isScanning = isScanning,
                 onClose = onCloseDrawer,
-                onRefresh = { viewModel.startScan() },
-                onMakeDiscoverable = onMakeDiscoverable
+                onRefresh = { viewModel.startScan() }
             )
 
-            // Content
             when {
                 scanState is ScanState.Error -> {
                     ErrorState(
@@ -94,8 +89,7 @@ fun DevicesScreen(
 fun DevicesHeader(
     isScanning: Boolean,
     onClose: () -> Unit,
-    onRefresh: () -> Unit,
-    onMakeDiscoverable: () -> Unit
+    onRefresh: () -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -112,23 +106,14 @@ fun DevicesHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Закрити",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Text(
+                    text = "Пристрої поблизу",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onMakeDiscoverable) {
-                        Icon(
-                            Icons.Default.Visibility,
-                            contentDescription = "Стати видимим",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
                     IconButton(
                         onClick = onRefresh,
                         enabled = !isScanning
@@ -136,7 +121,8 @@ fun DevicesHeader(
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = "Оновити",
-                            tint = if (isScanning) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                            tint = if (isScanning) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.scale(
                                 if (isScanning) {
                                     infiniteRepeating(1f, 1.2f)
@@ -144,17 +130,16 @@ fun DevicesHeader(
                             )
                         )
                     }
+
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Закрити",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Пристрої поблизу",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -231,11 +216,9 @@ fun MinimalDeviceCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Іконка типу пристрою
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    // Використовуємо PrimaryContainer (світло-фіолетовий)
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -272,7 +255,7 @@ fun MinimalDeviceCard(
                     Icon(
                         Icons.Default.SignalCellularAlt,
                         contentDescription = null,
-                        tint = com.neartalk.ui.theme.Online, // Або просто Green
+                        tint = com.neartalk.ui.theme.Online,
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
@@ -287,7 +270,6 @@ fun MinimalDeviceCard(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Кнопка "Підключити"
             Surface(
                 color = MaterialTheme.colorScheme.primary,
                 shape = RoundedCornerShape(12.dp),
@@ -459,38 +441,35 @@ fun ErrorState(
 
 @Composable
 fun pulsatingAlpha(): Float {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     return infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = EaseInOut),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "alpha"
     ).value
 }
 
 @Composable
 fun infiniteRepeating(from: Float, to: Float): Float {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "rotate")
     return infiniteTransition.animateFloat(
         initialValue = from,
         targetValue = to,
         animationSpec = infiniteRepeatable(
             animation = tween(1000),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "scale"
     ).value
 }
 
-// Data class
 data class DeviceItem(
     val id: String,
     val name: String,
     val distance: String = "Поблизу",
     val signalStrength: Int = 100
-) {
-    init {
-        // distance = if (rssi != null) String.format("%.2f m", Math.pow(10.0, ((-69 - rssi.toInt()) / (10.0 * 2.0)))) else "Поблизу"
-    }
-}
+)
