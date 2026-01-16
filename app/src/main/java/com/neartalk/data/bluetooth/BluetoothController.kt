@@ -14,6 +14,7 @@ import com.neartalk.domain.model.MessageType
 import com.neartalk.utils.SecurityUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.DataInputStream
@@ -36,7 +37,10 @@ class AndroidBluetoothController(
         private const val CONNECTION_TIMEOUT_MS = 15_000L
         private const val MAX_MESSAGE_SIZE = 1024 * 100 // 100 KB
         private const val SERVER_START_DELAY = 1000L
-        private const val ROUTE_CLEANUP_INTERVAL = 60_000L // 1 минута
+        private const val ROUTE_CLEANUP_INTERVAL = 60_000L // 1 хвилина
+        private const val PEER_DISCOVERY_DELAY = 2000L
+        private const val PEER_LIST_BROADCAST_INTERVAL = 15_000L
+        private const val PEER_TIMEOUT = 120_000L // 2 хвилини
     }
 
     private val SERVICE_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
@@ -48,6 +52,13 @@ class AndroidBluetoothController(
         encodeDefaults = true
         isLenient = true
     }
+
+    @Serializable
+    data class PeerInfo(
+        val userId: String,
+        val userName: String,
+        val lastSeen: Long
+    )
 
     private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
     val scannedDevices: StateFlow<List<BluetoothDeviceDomain>> = _scannedDevices.asStateFlow()
@@ -68,6 +79,7 @@ class AndroidBluetoothController(
     private val activeJobs = ConcurrentHashMap<String, Job>()
 
     private val routingTable = ConcurrentHashMap<String, RouteInfo>()
+    private val knownPeers = ConcurrentHashMap<String, PeerInfo>()
 
     private val processedMessageIds = Collections.synchronizedSet(
         Collections.newSetFromMap(
@@ -135,6 +147,8 @@ class AndroidBluetoothController(
         updateBluetoothState()
 
         startRouteCleanup()
+        startPeerCleanup()
+        startPeerListBroadcast()
     }
 
     private fun startRouteCleanup() {
@@ -151,6 +165,91 @@ class AndroidBluetoothController(
                     routingTable.remove(userId)
                     Log.d(TAG, "Removed stale route to ${userId.take(6)}")
                 }
+            }
+        }
+    }
+
+    private fun startPeerCleanup() {
+        controllerScope.launch {
+            while (isActive) {
+                delay(60_000) // Кожну хвилину
+
+                val now = System.currentTimeMillis()
+                val stalePeers = knownPeers.filter { (_, peer) ->
+                    (now - peer.lastSeen) > PEER_TIMEOUT
+                }
+
+                stalePeers.keys.forEach { userId ->
+                    knownPeers.remove(userId)
+                    Log.d(TAG, "🗑️ Removed stale peer: ${userId.take(6)}")
+                }
+            }
+        }
+    }
+
+    private fun startPeerListBroadcast() {
+        controllerScope.launch {
+            while (isActive) {
+                delay(PEER_LIST_BROADCAST_INTERVAL)
+
+                if (activeConnections.isNotEmpty() && knownPeers.isNotEmpty()) {
+                    broadcastPeerList()
+                }
+            }
+        }
+    }
+
+    private suspend fun broadcastPeerList() {
+        withContext(Dispatchers.Default) {
+            try {
+                val peerList = knownPeers.values.toList()
+                val jsonList = jsonFormat.encodeToString(peerList)
+
+                val ts = System.currentTimeMillis()
+                val hash = SecurityUtils.generateHash(jsonList, ts, myId)
+
+                val msg = Message(
+                    id = UUID.randomUUID().toString(),
+                    text = jsonList,
+                    senderId = myId,
+                    senderName = "System",
+                    receiverId = "ALL",
+                    timestamp = ts,
+                    ttl = 3,
+                    contentHash = hash,
+                    type = MessageType.PEER_LIST_RESPONSE
+                )
+
+                Log.d(TAG, "📋 Broadcasting peer list (${peerList.size} peers)")
+                relayToMesh(msg, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to broadcast peer list", e)
+            }
+        }
+    }
+
+    private suspend fun requestPeerList() {
+        withContext(Dispatchers.Default) {
+            try {
+                val ts = System.currentTimeMillis()
+                val hash = SecurityUtils.generateHash("request", ts, myId)
+
+                val msg = Message(
+                    id = UUID.randomUUID().toString(),
+                    text = "request",
+                    senderId = myId,
+                    senderName = "System",
+                    receiverId = "ALL",
+                    timestamp = ts,
+                    ttl = 2,
+                    contentHash = hash,
+                    type = MessageType.PEER_LIST_REQUEST
+                )
+
+                Log.d(TAG, "🔍 Requesting peer list from network")
+                relayToMesh(msg, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to request peer list", e)
             }
         }
     }
@@ -322,6 +421,9 @@ class AndroidBluetoothController(
         Log.d(TAG, "✅ Node added: $address (total: ${activeConnections.size})")
 
         val job = controllerScope.launch(Dispatchers.IO) {
+            delay(PEER_DISCOVERY_DELAY)
+            requestPeerList()
+
             readLoop(node)
         }
         activeJobs[address] = job
@@ -375,12 +477,16 @@ class AndroidBluetoothController(
             return
         }
 
-        val expectedHash = SecurityUtils.generateHash(message.text, message.timestamp, message.senderId)
-        if (message.contentHash != expectedHash) {
-            Log.w(TAG, "⚠️ Hash mismatch for message ${message.id.take(8)}")
-            return
+        // Перевірка хешу лише для TEXT повідомлень
+        if (message.type == MessageType.TEXT) {
+            val expectedHash = SecurityUtils.generateHash(message.text, message.timestamp, message.senderId)
+            if (message.contentHash != expectedHash) {
+                Log.w(TAG, "⚠️ Hash mismatch for message ${message.id.take(8)}")
+                return
+            }
         }
 
+        // Оновлюємо маршрут
         if (message.senderId != myId) {
             val oldRoute = routingTable[message.senderId]
             routingTable[message.senderId] = RouteInfo(
@@ -393,15 +499,79 @@ class AndroidBluetoothController(
             }
         }
 
-        Log.d(TAG, "📨 [${message.type}] from ${message.senderName} (${message.senderId.take(6)}): ${message.text.take(30)}")
+        when (message.type) {
+            MessageType.NAME_UPDATE, MessageType.DEVICE_ANNOUNCE -> {
+                if (message.senderId != myId) {
+                    knownPeers[message.senderId] = PeerInfo(
+                        userId = message.senderId,
+                        userName = message.text,
+                        lastSeen = System.currentTimeMillis()
+                    )
 
-        if (message.receiverId == myId || message.receiverId == "ALL") {
-            _incomingMessages.emit(message)
-        }
+                    Log.d(TAG, "👤 Peer registered: ${message.text} (${message.senderId.take(6)})")
 
-        if (message.ttl > 0) {
-            val forwardedMsg = message.copy(ttl = message.ttl - 1)
-            relayToMesh(forwardedMsg, excludeNode = source)
+                    _incomingMessages.emit(message)
+                }
+
+                if (message.ttl > 0) {
+                    val forwardedMsg = message.copy(ttl = message.ttl - 1)
+                    relayToMesh(forwardedMsg, excludeNode = source)
+                }
+            }
+
+            MessageType.PEER_LIST_REQUEST -> {
+                if (message.senderId != myId && knownPeers.isNotEmpty()) {
+                    Log.d(TAG, "📋 Peer list requested, responding with ${knownPeers.size} peers")
+                    delay(500)
+                    broadcastPeerList()
+                }
+            }
+
+            MessageType.PEER_LIST_RESPONSE -> {
+                try {
+                    val peerList = jsonFormat.decodeFromString<List<PeerInfo>>(message.text)
+                    var newPeersCount = 0
+
+                    peerList.forEach { peer ->
+                        if (peer.userId != myId && !knownPeers.containsKey(peer.userId)) {
+                            knownPeers[peer.userId] = peer
+                            newPeersCount++
+
+                            val announceMsg = Message(
+                                id = UUID.randomUUID().toString(),
+                                text = peer.userName,
+                                senderId = peer.userId,
+                                senderName = peer.userName,
+                                receiverId = "ALL",
+                                timestamp = peer.lastSeen,
+                                ttl = 0,
+                                contentHash = "",
+                                type = MessageType.DEVICE_ANNOUNCE
+                            )
+                            _incomingMessages.emit(announceMsg)
+                        }
+                    }
+
+                    if (newPeersCount > 0) {
+                        Log.d(TAG, "📥 Discovered $newPeersCount new peers from network")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse peer list", e)
+                }
+            }
+
+            MessageType.TEXT, MessageType.DELIVERY_ACK -> {
+                Log.d(TAG, "📨 [${message.type}] from ${message.senderName} (${message.senderId.take(6)}): ${message.text.take(30)}")
+
+                if (message.receiverId == myId || message.receiverId == "ALL") {
+                    _incomingMessages.emit(message)
+                }
+
+                if (message.ttl > 0) {
+                    val forwardedMsg = message.copy(ttl = message.ttl - 1)
+                    relayToMesh(forwardedMsg, excludeNode = source)
+                }
+            }
         }
     }
 
@@ -523,6 +693,7 @@ class AndroidBluetoothController(
         Log.d(TAG, "🧹 Cleanup started")
         stopDiscovery()
         closeConnections()
+        knownPeers.clear()
         try { context.unregisterReceiver(bluetoothStateReceiver) } catch (e: Exception) {}
         controllerScope.cancel()
         Log.d(TAG, "✅ Cleanup completed")

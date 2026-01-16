@@ -10,7 +10,9 @@ enum class MessageType {
     TEXT,
     NAME_UPDATE,
     DELIVERY_ACK,
-    DEVICE_ANNOUNCE
+    DEVICE_ANNOUNCE,
+    PEER_LIST_REQUEST,
+    PEER_LIST_RESPONSE
 }
 
 @Serializable

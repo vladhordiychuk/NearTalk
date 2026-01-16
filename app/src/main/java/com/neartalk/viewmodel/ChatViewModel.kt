@@ -206,6 +206,11 @@ class ChatViewModel @Inject constructor(
         localProcessedIds.add(msg.id)
 
         when (msg.type) {
+            MessageType.PEER_LIST_REQUEST, MessageType.PEER_LIST_RESPONSE -> {
+                Log.d(TAG, "Ignoring ${msg.type} - handled by BluetoothController")
+                return
+            }
+
             MessageType.NAME_UPDATE, MessageType.DEVICE_ANNOUNCE -> {
                 if (msg.senderId == myUserId) return
 
